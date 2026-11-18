@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Estante</title>
+<meta name="description" content="Sua estante de livros EPUB e MOBI no celular.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#F4EEE4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16120F" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Estante">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- ============ ESTANTE ============ -->
+<main id="estante">
+  <header class="topo">
+    <div>
+      <p class="sobre" id="saudacao">Boa leitura</p>
+      <h1>Estante</h1>
+    </div>
+    <button class="btn-add" id="btn-add" aria-label="Adicionar livro">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Adicionar</span>
+    </button>
+  </header>
+
+  <section id="continuar" hidden></section>
+
+  <section id="lista" hidden>
+    <div class="lista-cab">
+      <h2 id="contagem">Seus livros</h2>
+      <div class="ordem" role="group" aria-label="Ordenar">
+        <button data-ordem="recentes" class="on">Recentes</button>
+        <button data-ordem="titulo">Título</button>
+        <button data-ordem="autor">Autor</button>
+      </div>
+    </div>
+    <label class="busca" id="busca-wrap" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="busca" type="search" placeholder="Buscar título ou autor" autocomplete="off">
+    </label>
+    <div id="prateleiras"></div>
+  </section>
+
+  <section id="vazio" hidden>
+    <div class="vazio-arte" aria-hidden="true">
+      <span style="--h:74%;--c:var(--livro1)"></span>
+      <span style="--h:62%;--c:var(--livro2)"></span>
+      <span style="--h:82%;--c:var(--livro3)"></span>
+      <span class="deitado" style="--c:var(--livro2)"></span>
+      <i></i>
+    </div>
+    <h2>Sua estante está vazia</h2>
+    <p>Traga os livros que já estão no seu celular. Arquivos <b>EPUB</b> e <b>MOBI</b> (também AZW3).</p>
+    <button class="btn-grande" id="btn-add-vazio">Escolher livro no celular</button>
+  </section>
+
+  <section class="dicas">
+    <h3>Como colocar livros aqui</h3>
+    <ol>
+      <li><b>Pelo botão Adicionar:</b> toque em <i>Adicionar</i> e escolha o arquivo (no iPhone, vá em <i>Escolher arquivo</i> → app Arquivos).</li>
+      <li><b>No Android:</b> instale a Estante na tela inicial e depois, em qualquer app, toque em <i>Compartilhar</i> no livro e escolha <i>Estante</i>.</li>
+      <li>Os livros ficam guardados <b>só neste celular</b> e abrem mesmo sem internet.</li>
+    </ol>
+    <p class="espaco" id="espaco"></p>
+  </section>
+</main>
+
+<!-- ============ LEITOR ============ -->
+<div id="leitor" hidden data-tema="papel">
+  <div class="l-mini l-mini-topo" id="l-capitulo-mini"></div>
+  <div id="l-palco"></div>
+  <div class="l-mini l-mini-base"><span id="l-pct-mini"></span></div>
+
+  <header class="l-barra l-topo">
+    <button class="l-ico" id="l-voltar" aria-label="Voltar para a estante">
+      <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="l-titulo"><b id="l-titulo"></b><span id="l-autor"></span></div>
+    <button class="l-ico" id="l-sumario-btn" aria-label="Sumário">
+      <svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+    </button>
+    <button class="l-ico l-aa" id="l-aa-btn" aria-label="Tamanho da letra e aparência">Aa</button>
+  </header>
+
+  <footer class="l-barra l-base">
+    <div class="l-progresso">
+      <input type="range" id="l-slider" min="0" max="1" step="0.0005" value="0" aria-label="Posição no livro">
+    </div>
+    <div class="l-info"><span id="l-capitulo"></span><span id="l-pct"></span></div>
+  </footer>
+
+  <!-- painel Aa -->
+  <div class="folha" id="folha-aa" hidden>
+    <div class="folha-corpo">
+      <div class="aa-tamanho">
+        <button class="aa-menos" id="aa-menos" aria-label="Diminuir letra">A</button>
+        <input type="range" id="aa-slider" min="14" max="32" step="1" aria-label="Tamanho da letra">
+        <button class="aa-mais" id="aa-mais" aria-label="Aumentar letra">A</button>
+      </div>
+      <p class="aa-valor"><span id="aa-valor"></span></p>
+
+      <p class="folha-rot">Fundo</p>
+      <div class="aa-temas" id="aa-temas">
+        <button data-tema="papel" aria-label="Papel"><span>Papel</span></button>
+        <button data-tema="branco" aria-label="Branco"><span>Branco</span></button>
+        <button data-tema="sepia" aria-label="Sépia"><span>Sépia</span></button>
+        <button data-tema="noite" aria-label="Noite"><span>Noite</span></button>
+      </div>
+
+      <p class="folha-rot">Letra</p>
+      <div class="seg" id="aa-fonte">
+        <button data-v="original">Do livro</button>
+        <button data-v="serif" style="font-family:Georgia,serif">Serifada</button>
+        <button data-v="sans" style="font-family:system-ui,sans-serif">Sem serifa</button>
+      </div>
+
+      <p class="folha-rot">Espaço entre linhas</p>
+      <div class="seg" id="aa-linha">
+        <button data-v="1.35">Justo</button>
+        <button data-v="1.55">Normal</button>
+        <button data-v="1.8">Folgado</button>
+      </div>
+
+      <p class="folha-rot">Margens</p>
+      <div class="seg" id="aa-margem">
+        <button data-v="4">Estreitas</button>
+        <button data-v="7">Normais</button>
+        <button data-v="11">Largas</button>
+      </div>
+
+      <label class="aa-check"><input type="checkbox" id="aa-rolagem"> Rolar a página em vez de virar</label>
+    </div>
+  </div>
+
+  <!-- sumário -->
+  <div class="folha folha-alta" id="folha-sumario" hidden>
+    <div class="folha-cab"><h3>Sumário</h3><button class="l-ico" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <nav class="sumario" id="sumario"></nav>
+  </div>
+  <div class="veu" id="veu" hidden></div>
+</div>
+
+<!-- detalhes do livro -->
+<div class="modal" id="modal-livro" hidden>
+  <div class="modal-caixa">
+    <div class="modal-livro">
+      <div class="capa capa-g" id="ml-capa"></div>
+      <div>
+        <h3 id="ml-titulo"></h3>
+        <p id="ml-autor"></p>
+        <p class="ml-meta" id="ml-meta"></p>
+      </div>
+    </div>
+    <button class="btn-grande" id="ml-ler">Ler</button>
+    <button class="btn-linha" id="ml-zerar">Começar do início</button>
+    <button class="btn-linha perigo" id="ml-remover">Remover da estante</button>
+    <button class="btn-texto" data-fechar>Fechar</button>
+  </div>
+</div>
+
+<div class="aviso" id="aviso" role="status" aria-live="polite"></div>
+<input type="file" id="arquivo" multiple hidden>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -11,5 +11,5 @@ Leitor de livros EPUB e MOBI (também AZW3) para o celular. Funciona como app (P
 ## Arquivos
 - `index.html`, `app.css`, `app.js` — o app
 - `sw.js` — offline + recebe livros compartilhados (Android). Ao mudar o app, subir `VERSION`.
-- `lib/foliate/` — leitor [foliate-js](https://github.com/johnfactotum/foliate-js) (MIT), copiado sem alterações
+- `lib/foliate/` — leitor [foliate-js](https://github.com/johnfactotum/foliate-js) (MIT). Única alteração: em `paginator.js` (`#onTouchEnd`), toque com menos de 40px de arraste não vira página (marcado com "Estante:")
 - `make-icons.ps1` — gera os ícones em `icons/`

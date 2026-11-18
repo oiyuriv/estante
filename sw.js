@@ -1,5 +1,5 @@
 // Estante — service worker: app offline + recebe livros compartilhados (Android).
-const VERSION = 'estante-v1'
+const VERSION = 'estante-v2'
 const INBOX = 'estante-inbox'
 const SHELL = [
   './', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest',
@@ -13,7 +13,8 @@ const SHELL = [
 ]
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()))
+  // cache: 'reload' = baixa direto do servidor, sem pegar cópia velha do navegador
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()))
 })
 
 self.addEventListener('activate', e => {

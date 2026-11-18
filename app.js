@@ -38,9 +38,14 @@ const Livros = {
 }
 
 /* ================= Preferências de leitura ================= */
-const PADRAO = { tamanho: 19, tema: 'papel', fonte: 'serif', linha: '1.55', margem: '7', rolagem: false, ordem: 'recentes' }
+const PADRAO = { tamanho: 19, tema: 'noite', cor: 'auto', fonte: 'literata', linha: '1.6', margem: '7', rolagem: false, virar: 'bordas', ordem: 'recentes', v: 2 }
 let prefs = { ...PADRAO }
-try { prefs = { ...PADRAO, ...JSON.parse(localStorage.getItem('estante-prefs') || '{}') } } catch {}
+try {
+  const salvo = JSON.parse(localStorage.getItem('estante-prefs') || '{}')
+  // versão 2: o padrão passou a ser o modo noturno
+  if (!salvo.v) { salvo.tema = 'noite'; salvo.v = 2 }
+  prefs = { ...PADRAO, ...salvo }
+} catch {}
 const salvarPrefs = () => { try { localStorage.setItem('estante-prefs', JSON.stringify(prefs)) } catch {} }
 
 /* ================= Utilidades ================= */
@@ -194,6 +199,7 @@ async function desenharEstante() {
       </div>`
   } else cont.hidden = true
 
+  desenharMetaHoje(vazio)
   if (vazio) return atualizarEspaco()
 
   $('#contagem').textContent = livrosCache.length === 1 ? '1 livro' : `${livrosCache.length} livros`
@@ -284,33 +290,69 @@ $('#ml-remover').addEventListener('click', async () => {
 
 /* ================= Leitor ================= */
 const TEMAS = {
-  papel: { fundo: '#F6F0E4', tinta: '#2B241E', link: '#9A4A24' },
-  branco: { fundo: '#FFFFFF', tinta: '#1A1A1A', link: '#9A4A24' },
-  sepia: { fundo: '#EADBC0', tinta: '#46372A', link: '#8A3F1C' },
-  noite: { fundo: '#121110', tinta: '#CFC6B8', link: '#E08A5C' },
+  papel: { fundo: '#F6F0E4', tinta: '#2B241E', link: '#9A4A24', escuro: false },
+  branco: { fundo: '#FFFFFF', tinta: '#1A1A1A', link: '#9A4A24', escuro: false },
+  sepia: { fundo: '#EADBC0', tinta: '#46372A', link: '#8A3F1C', escuro: false },
+  noite: { fundo: '#1A1816', tinta: '#D8D0C4', link: '#E8956A', escuro: true },
+  preto: { fundo: '#000000', tinta: '#E6E6E6', link: '#E8956A', escuro: true },
 }
+// cor da letra (independente do fundo)
+const CORES = {
+  auto: null,
+  branca: '#FFFFFF', creme: '#F1E6D2', cinza: '#B9B4AC',
+  marrom: '#4A3727', preta: '#111111',
+}
+// fontes de leitura; as do Google são carregadas só quando escolhidas
 const FONTES = {
-  serif: "'Iowan Old Style', 'Palatino Linotype', Palatino, Charter, Georgia, serif",
-  sans: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+  original: { nome: 'Do livro', css: null },
+  sistema: { nome: 'Georgia', css: "'Iowan Old Style', Georgia, 'Palatino Linotype', serif" },
+  literata: { nome: 'Literata', css: "'Literata', Georgia, serif", g: 'Literata:ital,wght@0,400;0,600;1,400' },
+  lora: { nome: 'Lora', css: "'Lora', Georgia, serif", g: 'Lora:ital,wght@0,400;0,600;1,400' },
+  merriweather: { nome: 'Merriweather', css: "'Merriweather', Georgia, serif", g: 'Merriweather:ital,wght@0,300;0,400;0,700;1,400' },
+  garamond: { nome: 'Garamond', css: "'EB Garamond', Garamond, serif", g: 'EB+Garamond:ital,wght@0,400;0,600;1,400' },
+  crimson: { nome: 'Crimson', css: "'Crimson Pro', Georgia, serif", g: 'Crimson+Pro:ital,wght@0,400;0,600;1,400' },
+  atkinson: { nome: 'Atkinson', css: "'Atkinson Hyperlegible', system-ui, sans-serif", g: 'Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400' },
+  nunito: { nome: 'Nunito Sans', css: "'Nunito Sans', system-ui, sans-serif", g: 'Nunito+Sans:ital,wght@0,400;0,700;1,400' },
+  sans: { nome: 'Sistema', css: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" },
 }
+if (!FONTES[prefs.fonte]) prefs.fonte = prefs.fonte === 'serif' ? 'literata' : 'original'
+if (!(prefs.cor in CORES)) prefs.cor = 'auto'
+if (!TEMAS[prefs.tema]) prefs.tema = 'papel'
+if (!['1.4', '1.6', '1.85'].includes(prefs.linha)) prefs.linha = '1.6'
+if (!['bordas', 'deslizar'].includes(prefs.virar)) prefs.virar = 'bordas'
+// botões de fonte, cada um escrito na própria fonte
+$('#aa-fonte').innerHTML = Object.entries(FONTES).map(([k, f]) =>
+  `<button data-v="${k}" style="font-family:${(f.css || 'inherit').replace(/"/g, "'")}">${f.nome}</button>`).join('')
+
+// carrega as fontes na página principal para a prévia dos botões
+{
+  const l = document.createElement('link')
+  l.rel = 'stylesheet'
+  l.href = 'https://fonts.googleapis.com/css2?' + Object.values(FONTES).filter(f => f.g).map(f => 'family=' + f.g.split(':')[0]).join('&') + '&display=swap'
+  document.head.append(l)
+}
+
+const corDaLetra = () => CORES[prefs.cor] || (TEMAS[prefs.tema] || TEMAS.papel).tinta
+
 const cssLeitura = () => {
   const t = TEMAS[prefs.tema] || TEMAS.papel
-  const fonte = FONTES[prefs.fonte]
-  return `
+  const f = FONTES[prefs.fonte] || FONTES.original
+  const tinta = corDaLetra()
+  return `${f.g ? `@import url('https://fonts.googleapis.com/css2?family=${f.g}&display=swap');` : ''}
     @namespace epub "http://www.idpf.org/2007/ops";
-    html { font-size: ${prefs.tamanho}px !important; color: ${t.tinta} !important; background: ${t.fundo} !important; color-scheme: ${prefs.tema === 'noite' ? 'dark' : 'light'}; }
-    body { font-size: 1rem !important; color: ${t.tinta} !important; background: transparent !important; }
-    body * { color: inherit; background-color: transparent; }
+    html { font-size: ${prefs.tamanho}px !important; color: ${tinta} !important; background: ${t.fundo} !important; color-scheme: ${t.escuro ? 'dark' : 'light'}; }
+    body { font-size: 1rem !important; color: ${tinta} !important; background: transparent !important; }
+    body * { color: inherit !important; background-color: transparent !important; }
     p, li, blockquote, dd, div, span { font-size: inherit; }
     p, li, blockquote, dd {
       line-height: ${prefs.linha} !important;
-      text-align: justify; -webkit-hyphens: auto; hyphens: auto;
+      text-align: start !important; -webkit-hyphens: auto; hyphens: auto;
       widows: 2; orphans: 2;
     }
-    ${fonte ? `body, p, li, blockquote, dd, div, span, td, h1, h2, h3, h4, h5, h6 { font-family: ${fonte} !important; }` : ''}
+    ${f.css ? `body, p, li, blockquote, dd, div, span, td, h1, h2, h3, h4, h5, h6 { font-family: ${f.css} !important; }` : ''}
     a:link, a:visited { color: ${t.link} !important; }
     img, svg, video { max-width: 100%; height: auto; }
-    ${prefs.tema === 'noite' ? 'img { opacity: .88; }' : ''}
+    ${t.escuro ? 'img { opacity: .9; }' : ''}
     pre { white-space: pre-wrap !important; }
     [align="center"] { text-align: center; }
     aside[epub|type~="footnote"], aside[epub|type~="endnote"], aside[epub|type~="rearnote"] { display: none; }
@@ -322,11 +364,24 @@ let view = null, livroAtual = null, salvarT = null, secoes = []
 function aplicarAparencia() {
   const lt = $('#leitor')
   lt.dataset.tema = prefs.tema
+  lt.style.setProperty('--l-letra', corDaLetra())
   document.querySelector('meta[name="theme-color"]:not([media])')?.remove()
   if (!lt.hidden) {
     const m = document.createElement('meta'); m.name = 'theme-color'; m.content = (TEMAS[prefs.tema] || TEMAS.papel).fundo
     document.head.append(m)
   }
+  // painel Aa
+  $('#aa-slider').value = prefs.tamanho
+  $('#aa-slider').style.setProperty('--p', `${((prefs.tamanho - 14) / 18) * 100}%`)
+  $('#aa-valor').textContent = `${prefs.tamanho} px`
+  $$('#aa-temas button').forEach(b => b.classList.toggle('on', b.dataset.tema === prefs.tema))
+  $$('#aa-cores button').forEach(b => b.classList.toggle('on', b.dataset.v === prefs.cor))
+  $$('#aa-fonte button').forEach(b => b.classList.toggle('on', b.dataset.v === prefs.fonte))
+  $$('#aa-linha button').forEach(b => b.classList.toggle('on', b.dataset.v === prefs.linha))
+  $$('#aa-margem button').forEach(b => b.classList.toggle('on', b.dataset.v === prefs.margem))
+  $$('#aa-virar button').forEach(b => b.classList.toggle('on', b.dataset.v === prefs.virar))
+  $('#aa-rolagem').checked = !!prefs.rolagem
+  $('#aa-virar-wrap').hidden = !!prefs.rolagem
   if (!view?.renderer) return
   view.renderer.setAttribute('flow', prefs.rolagem ? 'scrolled' : 'paginated')
   view.renderer.setAttribute('gap', `${prefs.margem}%`)
@@ -334,15 +389,6 @@ function aplicarAparencia() {
   view.renderer.setAttribute('max-inline-size', '680px')
   view.renderer.setAttribute('max-column-count', '2')
   view.renderer.setStyles?.(cssLeitura())
-  // painel Aa
-  $('#aa-slider').value = prefs.tamanho
-  $('#aa-slider').style.setProperty('--p', `${((prefs.tamanho - 14) / 18) * 100}%`)
-  $('#aa-valor').textContent = `${prefs.tamanho} px`
-  $$('#aa-temas button').forEach(b => b.classList.toggle('on', b.dataset.tema === prefs.tema))
-  $$('#aa-fonte button').forEach(b => b.classList.toggle('on', b.dataset.v === prefs.fonte))
-  $$('#aa-linha button').forEach(b => b.classList.toggle('on', b.dataset.v === prefs.linha))
-  $$('#aa-margem button').forEach(b => b.classList.toggle('on', b.dataset.v === prefs.margem))
-  $('#aa-rolagem').checked = !!prefs.rolagem
 }
 
 async function abrirLeitor(id) {
@@ -350,6 +396,7 @@ async function abrirLeitor(id) {
   const blob = l && await Livros.arquivo(id)
   if (!blob) return aviso('Não achei o arquivo desse livro')
   livroAtual = l
+  atividade(); mostrarMeta()
   const lt = $('#leitor')
   lt.hidden = false
   lt.classList.remove('ui')
@@ -385,6 +432,7 @@ async function abrirLeitor(id) {
 }
 
 function aoMover({ detail }) {
+  atividade()
   const { fraction, tocItem } = detail
   const f = fraction ?? 0
   const cap = tocItem?.label?.trim() || ''
@@ -401,11 +449,27 @@ function aoMover({ detail }) {
   salvarT = setTimeout(() => Livros.salvar(livroAtual), 400)
 }
 
-// toques: esquerda volta, direita avança, meio mostra/esconde os controles
+// Toques. Para não virar página sem querer:
+// - só as faixas das bordas (20% de cada lado) viram; o meio mostra/esconde os controles
+// - "Só deslizando": nenhum toque vira página
+// - toque que arrastou, demorou (segurar/selecionar) ou veio logo depois de outro é ignorado
+let toqueIni = null, ultimaVirada = 0
 function aoCarregarSecao({ detail: { doc } }) {
+  doc.addEventListener('touchstart', e => {
+    const t = e.touches[0]
+    toqueIni = t ? { x: t.screenX, y: t.screenY, t: Date.now(), n: e.touches.length } : null
+    atividade()
+  }, { passive: true })
   doc.addEventListener('click', e => {
     if (e.defaultPrevented || e.target.closest?.('a[href]')) return
     if (doc.getSelection()?.toString()) return
+    if (toqueIni) {
+      const andou = Math.hypot(e.screenX - toqueIni.x, e.screenY - toqueIni.y)
+      const demorou = Date.now() - toqueIni.t
+      const multi = toqueIni.n > 1
+      toqueIni = null
+      if (andou > 12 || demorou > 450 || multi) return
+    }
     const fr = doc.defaultView?.frameElement
     const x = (fr?.getBoundingClientRect().left || 0) + e.clientX
     toque(x)
@@ -414,14 +478,104 @@ function aoCarregarSecao({ detail: { doc } }) {
 }
 function toque(x) {
   const lt = $('#leitor')
+  atividade()
   if (!$('#folha-aa').hidden || !$('#folha-sumario').hidden) return fecharFolhas()
   if (lt.classList.contains('ui')) return lt.classList.remove('ui')
   const w = innerWidth
-  if (prefs.rolagem || (x > w * 0.3 && x < w * 0.7)) lt.classList.add('ui')
-  else if (x <= w * 0.3) view?.goLeft()
+  const borda = prefs.rolagem || prefs.virar === 'deslizar' ? 0 : Math.min(w * 0.2, 120)
+  if (x > borda && x < w - borda) return lt.classList.add('ui')
+  if (Date.now() - ultimaVirada < 350) return // toque duplo não vira duas
+  ultimaVirada = Date.now()
+  if (x <= borda) view?.goLeft()
   else view?.goRight()
 }
+
+/* ================= Meta de leitura diária ================= */
+// Conta o tempo com o livro aberto e a tela ligada; pausa se ficar 4 min sem mexer.
+const META_MIN = 30
+const OCIOSO = 4 * 60 * 1000
+const hoje = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+let leitura = { dias: {}, avisado: '' }
+try { leitura = { ...leitura, ...JSON.parse(localStorage.getItem('estante-leitura') || '{}') } } catch {}
+const salvarLeitura = () => { try { localStorage.setItem('estante-leitura', JSON.stringify(leitura)) } catch {} }
+let ultimaAtividade = Date.now(), ultimoTique = Date.now()
+function atividade() { ultimaAtividade = Date.now() }
+const minutosHoje = () => Math.floor((leitura.dias[hoje()] || 0) / 60)
+function sequencia() {
+  let n = 0
+  const d = new Date()
+  if ((leitura.dias[hoje()] || 0) < META_MIN * 60) d.setDate(d.getDate() - 1) // hoje ainda não conta, mas não quebra
+  for (;;) {
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    if ((leitura.dias[k] || 0) >= META_MIN * 60) { n++; d.setDate(d.getDate() - 1) } else break
+  }
+  return n
+}
+function mostrarMeta() {
+  const m = Math.min(minutosHoje(), META_MIN)
+  const p = m / META_MIN
+  const ok = minutosHoje() >= META_MIN
+  const txt = ok ? 'Meta de hoje feita' : `${m} de ${META_MIN} min hoje`
+  $('#l-meta').textContent = txt
+  $('#l-meta-mini').textContent = ok ? '✓ 30 min' : `${m} min`
+  $('#l-meta-anel').style.setProperty('--p', p)
+  $('#leitor').classList.toggle('meta-ok', ok)
+}
+setInterval(() => {
+  const agora = Date.now()
+  const passou = Math.min(agora - ultimoTique, 15000)
+  ultimoTique = agora
+  if ($('#leitor').hidden || document.hidden || !view) return
+  if (agora - ultimaAtividade > OCIOSO) return
+  const k = hoje()
+  const antes = leitura.dias[k] || 0
+  leitura.dias[k] = antes + passou / 1000
+  // guarda só os últimos 400 dias
+  const chaves = Object.keys(leitura.dias)
+  if (chaves.length > 400) chaves.sort().slice(0, chaves.length - 400).forEach(c => delete leitura.dias[c])
+  if (antes < META_MIN * 60 && leitura.dias[k] >= META_MIN * 60 && leitura.avisado !== k) {
+    leitura.avisado = k
+    comemorar()
+  }
+  salvarLeitura()
+  mostrarMeta()
+}, 5000)
+
+function desenharMetaHoje(vazio) {
+  const el = $('#meta-hoje')
+  el.hidden = vazio
+  if (vazio) return
+  const min = minutosHoje()
+  const ok = min >= META_MIN
+  const s = sequencia()
+  // últimos 7 dias
+  const dias = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i)
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const p = Math.min(1, (leitura.dias[k] || 0) / (META_MIN * 60))
+    dias.push(`<span class="dia${p >= 1 ? ' cheio' : ''}${i === 0 ? ' hoje' : ''}" style="--p:${p}"><i></i><b>${'DSTQQSS'[d.getDay()]}</b></span>`)
+  }
+  el.classList.toggle('ok', ok)
+  el.innerHTML = `
+    <div class="anel" style="--p:${Math.min(1, min / META_MIN)}"><span>${ok ? '✓' : Math.min(min, META_MIN)}</span></div>
+    <div class="meta-txt">
+      <p class="cont-rot">Leitura de hoje</p>
+      <h2>${ok ? `Meta feita: ${min} min lidos` : `${min} de ${META_MIN} minutos`}</h2>
+      <p>${ok ? (s > 1 ? `${s} dias seguidos. Que ritmo!` : 'Boa! Amanhã tem mais.') : min ? `Faltam ${META_MIN - min} min para a meta.` : 'Meta: 30 minutos de leitura por dia.'}${!ok && s ? ` Sequência: ${s} ${s > 1 ? 'dias' : 'dia'}.` : ''}</p>
+    </div>
+    <div class="semana" aria-label="Últimos 7 dias">${dias.join('')}</div>`
+}
+
+function comemorar() {
+  const s = sequencia()
+  $('#parabens-seq').textContent = s > 1 ? `${s} dias seguidos batendo a meta.` : 'Volte amanhã para começar uma sequência.'
+  $('#parabens').hidden = false
+  navigator.vibrate?.([120, 80, 120])
+}
+$('#parabens-ok').addEventListener('click', () => { $('#parabens').hidden = true; atividade() })
 function teclas(e) {
+  atividade()
   if ($('#leitor').hidden) return
   if (e.key === 'ArrowLeft' || e.key === 'PageUp') view?.goLeft()
   else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); view?.goRight() }
@@ -478,7 +632,9 @@ $('#aa-slider').addEventListener('input', e => mudar('tamanho', +e.target.value)
 $('#aa-menos').addEventListener('click', () => mudar('tamanho', Math.max(14, prefs.tamanho - 1)))
 $('#aa-mais').addEventListener('click', () => mudar('tamanho', Math.min(32, prefs.tamanho + 1)))
 $$('#aa-temas button').forEach(b => b.addEventListener('click', () => mudar('tema', b.dataset.tema)))
-$$('#aa-fonte button').forEach(b => b.addEventListener('click', () => mudar('fonte', b.dataset.v)))
+$$('#aa-cores button').forEach(b => b.addEventListener('click', () => mudar('cor', b.dataset.v)))
+$$('#aa-virar button').forEach(b => b.addEventListener('click', () => mudar('virar', b.dataset.v)))
+$('#aa-fonte').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) mudar('fonte', b.dataset.v) })
 $$('#aa-linha button').forEach(b => b.addEventListener('click', () => mudar('linha', b.dataset.v)))
 $$('#aa-margem button').forEach(b => b.addEventListener('click', () => mudar('margem', b.dataset.v)))
 $('#aa-rolagem').addEventListener('change', e => mudar('rolagem', e.target.checked))
@@ -502,7 +658,18 @@ addEventListener('popstate', () => { if (!history.state?.leitor) fecharLeitor() 
 document.addEventListener('visibilitychange', () => { if (document.hidden && livroAtual) Livros.salvar(livroAtual) })
 
 /* ================= Início ================= */
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {})
+if ('serviceWorker' in navigator) {
+  const tinha = !!navigator.serviceWorker.controller
+  navigator.serviceWorker.register('sw.js').catch(() => {})
+  // chegou versão nova do app: recarrega na hora se estiver na estante, ou quando voltar para ela
+  let recarregar = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!tinha) return
+    if ($('#leitor').hidden) location.reload()
+    else recarregar = true
+  })
+  addEventListener('popstate', () => { if (recarregar && !history.state?.leitor) setTimeout(() => location.reload(), 300) })
+}
 if (history.state?.leitor) history.replaceState(null, '', location.href)
 await desenharEstante()
 await receberCompartilhados()

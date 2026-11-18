@@ -6,11 +6,13 @@
 <title>Estante</title>
 <meta name="description" content="Sua estante de livros EPUB e MOBI no celular.">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#F4EEE4" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#16120F" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#12100E" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12100E" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
 <meta name="apple-mobile-web-app-title" content="Estante">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -34,6 +36,8 @@
       <span>Adicionar</span>
     </button>
   </header>
+
+  <section id="meta-hoje" hidden></section>
 
   <section id="continuar" hidden></section>
 
@@ -81,7 +85,7 @@
 <div id="leitor" hidden data-tema="papel">
   <div class="l-mini l-mini-topo" id="l-capitulo-mini"></div>
   <div id="l-palco"></div>
-  <div class="l-mini l-mini-base"><span id="l-pct-mini"></span></div>
+  <div class="l-mini l-mini-base"><span id="l-meta-mini"></span><span id="l-pct-mini"></span></div>
 
   <header class="l-barra l-topo">
     <button class="l-ico" id="l-voltar" aria-label="Voltar para a estante">
@@ -99,6 +103,7 @@
       <input type="range" id="l-slider" min="0" max="1" step="0.0005" value="0" aria-label="Posição no livro">
     </div>
     <div class="l-info"><span id="l-capitulo"></span><span id="l-pct"></span></div>
+    <div class="l-meta"><span class="l-meta-anel" id="l-meta-anel"></span><span id="l-meta"></span></div>
   </footer>
 
   <!-- painel Aa -->
@@ -113,24 +118,31 @@
 
       <p class="folha-rot">Fundo</p>
       <div class="aa-temas" id="aa-temas">
-        <button data-tema="papel" aria-label="Papel"><span>Papel</span></button>
-        <button data-tema="branco" aria-label="Branco"><span>Branco</span></button>
-        <button data-tema="sepia" aria-label="Sépia"><span>Sépia</span></button>
-        <button data-tema="noite" aria-label="Noite"><span>Noite</span></button>
+        <button data-tema="papel">Papel</button>
+        <button data-tema="branco">Branco</button>
+        <button data-tema="sepia">Sépia</button>
+        <button data-tema="noite">Noite</button>
+        <button data-tema="preto">Preto</button>
       </div>
 
-      <p class="folha-rot">Letra</p>
-      <div class="seg" id="aa-fonte">
-        <button data-v="original">Do livro</button>
-        <button data-v="serif" style="font-family:Georgia,serif">Serifada</button>
-        <button data-v="sans" style="font-family:system-ui,sans-serif">Sem serifa</button>
+      <p class="folha-rot">Cor da letra</p>
+      <div class="aa-cores" id="aa-cores">
+        <button data-v="auto" class="cor-auto">Auto</button>
+        <button data-v="branca" style="--c:#FFFFFF" aria-label="Branca"></button>
+        <button data-v="creme" style="--c:#F1E6D2" aria-label="Creme"></button>
+        <button data-v="cinza" style="--c:#B9B4AC" aria-label="Cinza claro"></button>
+        <button data-v="marrom" style="--c:#4A3727" aria-label="Marrom"></button>
+        <button data-v="preta" style="--c:#111111" aria-label="Preta"></button>
       </div>
+
+      <p class="folha-rot">Fonte</p>
+      <div class="aa-fontes" id="aa-fonte"></div>
 
       <p class="folha-rot">Espaço entre linhas</p>
       <div class="seg" id="aa-linha">
-        <button data-v="1.35">Justo</button>
-        <button data-v="1.55">Normal</button>
-        <button data-v="1.8">Folgado</button>
+        <button data-v="1.4">Justo</button>
+        <button data-v="1.6">Normal</button>
+        <button data-v="1.85">Folgado</button>
       </div>
 
       <p class="folha-rot">Margens</p>
@@ -140,7 +152,25 @@
         <button data-v="11">Largas</button>
       </div>
 
-      <label class="aa-check"><input type="checkbox" id="aa-rolagem"> Rolar a página em vez de virar</label>
+      <div id="aa-virar-wrap">
+        <p class="folha-rot">Virar a página</p>
+        <div class="seg" id="aa-virar">
+          <button data-v="bordas">Tocar na borda ou deslizar</button>
+          <button data-v="deslizar">Só deslizando</button>
+        </div>
+      </div>
+
+      <label class="aa-check"><input type="checkbox" id="aa-rolagem"> Rolar o texto em vez de virar páginas</label>
+    </div>
+  </div>
+
+  <!-- meta de 30 minutos -->
+  <div class="parabens" id="parabens" hidden>
+    <div class="parabens-caixa">
+      <div class="parabens-anel"><span>30</span><small>min</small></div>
+      <h3>Você leu 30 minutos hoje!</h3>
+      <p>Meta do dia cumprida. <span id="parabens-seq"></span></p>
+      <button class="btn-grande" id="parabens-ok">Continuar lendo</button>
     </div>
   </div>
 
